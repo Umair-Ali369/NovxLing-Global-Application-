@@ -1,0 +1,32 @@
+database.py
+-----------
+Sets up the connection to PostgreSQL and gives every request
+a way to borrow a database session and return it when done.
+
+WHY a separate file: every other file (models, routes) needs
+to talk to the database. Keeping the connection logic in one
+place means if we ever change the database (e.g. switch hosts),
+we only edit this one file.
+
+models.py
+---------
+Defines the actual database tables using SQLAlchemy.
+This week: just ONE table, UserDB, because Week 1's only
+job is registration + login. Conversations and messages
+come in a later week — adding them now would be
+building ahead of what we actually need yet.
+
+schemas.py
+----------
+Pydantic models — these validate data coming IN from the browser/React
+before it ever touches our real database models.
+
+Rule to remember: schemas.py = the door (validates shape of data).
+                    models.py  = the house (actually stores it).
+
+auth.py
+-------
+Everything related to passwords and tokens lives here, separate
+from routes. This means main.py stays focused on "what happens
+when a request comes in" while auth.py handles "how do we prove
+someone is who they say they are."
