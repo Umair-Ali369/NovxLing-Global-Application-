@@ -1,7 +1,8 @@
-
 import { useState } from "react";
 import AuthLayout from "../components/AuthLayout";
+import { useNavigate } from "react-router-dom";
 import Input from "../components/Input";
+import { registerUser } from "../api";
 
 const LANGUAGES = [
   { code: "en", label: "English" },
@@ -20,6 +21,9 @@ export default function Register() {
     age: "",
   });
   const [errors, setErrors] = useState({});
+  const [serverError, setServerError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
   function handleChange(field) {
     return (e) => setForm({ ...form, [field]: e.target.value });
@@ -29,20 +33,27 @@ export default function Register() {
     const newErrors = {};
     if (!form.name.trim()) newErrors.name = "Name is required";
     if (!form.email.includes("@")) newErrors.email = "Enter a valid email";
-    if (form.password.length < 6) newErrors.password = "Password must be at least 6 characters";
-    if (form.age && (isNaN(form.age) || Number(form.age) < 1)) newErrors.age = "Enter a valid age";
+    if (form.password.length < 6)
+      newErrors.password = "Password must be at least 6 characters";
+    if (form.age && (isNaN(form.age) || Number(form.age) < 1))
+      newErrors.age = "Enter a valid age";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   }
 
-  function handleSubmit(e) {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validate()) return;
-
-    // Week 3 replaces this block with a real fetch() call to /register
-    console.log("Register form ready to send:", form);
-    alert("Form valid! (Backend connection comes in Week 3)");
-  }
+    setLoading(true);
+    try {
+      await registerUser(form);
+      navigate("/login");
+    } catch (error) {
+      setServerError(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <AuthLayout
@@ -83,7 +94,9 @@ export default function Register() {
         />
 
         <div className="flex flex-col gap-1.5">
-          <label className="text-sm text-[#E8EDEC]/70">Preferred language</label>
+          <label className="text-sm text-[#E8EDEC]/70">
+            Preferred language
+          </label>
           <select
             value={form.language}
             onChange={handleChange("language")}
@@ -91,7 +104,9 @@ export default function Register() {
               focus:outline-none focus:ring-2 focus:ring-[#44ACFF]/50"
           >
             {LANGUAGES.map((l) => (
-              <option key={l.code} value={l.code}>{l.label}</option>
+              <option key={l.code} value={l.code}>
+                {l.label}
+              </option>
             ))}
           </select>
         </div>
@@ -106,7 +121,9 @@ export default function Register() {
 
         <p className="text-center text-sm text-[#E8EDEC]/50">
           Already have an account?{" "}
-          <a href="/login" className="text-[#44ACFF] hover:underline">Log in</a>
+          <a href="/login" className="text-[#44ACFF] hover:underline">
+            Log in
+          </a>
         </p>
       </form>
     </AuthLayout>
