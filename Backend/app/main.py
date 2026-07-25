@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Response, Cookie
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
@@ -7,7 +7,7 @@ from sqlalchemy import text
 from app.database import getDB, engine, Base
 from app.models import UserDB
 from app.schemas import RegisterUser, UserReponse
-from app.auth import hashPassword, verifyPassword, createAccessToken, getCurrentUser
+from app.auth import hashPassword, verifyPassword, createAccessToken, getCurrentUser,createRefrehToken, verifyRefreshToken
 
 # Creates tables if they don't exist yet — safe to run every startup
 Base.metadata.create_all(bind=engine)
@@ -68,13 +68,23 @@ def register(data : RegisterUser, db : Session = Depends(getDB)):
 
 # LOGIN
 @app.post("/login")
-def login(form_data : OAuth2PasswordRequestForm = Depends(), db : Session = Depends(getDB)):
+def login(response : Response, form_data : OAuth2PasswordRequestForm = Depends(), db : Session = Depends(getDB)):
     user = db.query(UserDB).filter(UserDB.email == form_data.username).filter().first()
 
     if not user or not verifyPassword(form_data.password, user.passwordHash):
         raise HTTPException(status_code = 401, detail = "Incorrect email or password!.")
     
     token = createAccessToken({"user_id" : user.id})
+    refreshToken = createRefrehToken({"user_id" : user.id})
+
+    response.set_cookie(
+        key = "refresh_token",
+        value = refreshToken,
+        httponly = True,
+        samesite = "lax",
+        secure = False,
+        max_age=60 * 60 * 24 * 7
+    )
 
     return {
         "access_token" : token,
@@ -86,8 +96,38 @@ def login(form_data : OAuth2PasswordRequestForm = Depends(), db : Session = Depe
         }
     }
 
+# REFRESH 
+@app.post("/refresh")
+def refreshAccessToken(
+    refreshToken: str | None = Cookie(default=None, alias="refresh_token"),
+    db : Session = Depends(getDB)
+):
+    if refreshToken is None:
+        raise HTTPException(status_code = 401, detail = "No refresh token found")
+    payload = verifyRefreshToken(refreshToken)
+    userID = payload.get("user_id")
+    user = db.query(UserDB).filter(UserDB.id == userID).filter().first()
+    if not user:
+        raise HTTPException(status_code = 401, detail = "User no longer exist")
+    newAccessToken = createAccessToken({"user_id" : user.id})
+
+    return {
+        "access_token": newAccessToken,
+        "token_type": "bearer",
+        "user": {
+            "id": user.id,
+            "name": user.name,
+            "language": user.language
+        }
+    }
 
 # CURRENT USER
 @app.get("/profile", response_model = UserReponse)
 def profile(currentUser : UserDB = Depends(getCurrentUser)):
     return currentUser
+
+# LOGOUT
+@app.post("/logout")
+def logout(response : Response):
+    response.delete_cookie(key = "refresh_token")
+    return {"message": "Logged out"}

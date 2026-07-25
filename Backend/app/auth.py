@@ -17,6 +17,7 @@ load_dotenv()
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTS = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTS", 30))
+REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", 7))
 
 # Handles bcrypt hashing so we never store plain text passwords
 pwd_context = CryptContext(schemes = ["bcrypt"], deprecated = "auto")
@@ -42,6 +43,27 @@ def createAccessToken(data : dict) -> str:
     toEncode.update({"exp" : expire})
     return jwt.encode(toEncode, SECRET_KEY, algorithm = ALGORITHM)
 
+# CREATE REFRESH TOKEN
+def createRefrehToken(data : dict) -> str:
+    toEncode = data.copy()
+    expire = datetime.utcnow()  + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+    toEncode.update({"exp" : expire, "type" : "refresh"})
+    return jwt.encode(toEncode, SECRET_KEY, algorithm=ALGORITHM)
+
+# VERIFY REFRESH TOKEN
+def verifyRefreshToken(token : str) -> dict:
+    credentialsException = HTTPException(
+        status_code = status.HTTP_401_UNAUTHORIZED,
+        detail = "Invalid Or Expire Tokne",
+    )
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        if payload.get("type") !=  "refresh":
+            raise credentialsException
+        return payload
+    except JWTError:
+        raise credentialsException
+
 # GET CURRENT USER
 def getCurrentUser(
     token : str = Depends(oauth2_scheme),
@@ -53,7 +75,7 @@ def getCurrentUser(
         headers = {"WWW-Authenticate" : "Bearer"}
     )
     try:
-        payLoad = jwt.decode(token, SECRET_KEY , algorithms = ALGORITHM)
+        payLoad = jwt.decode(token, SECRET_KEY , algorithms = [ALGORITHM])
         userId = payLoad.get("user_id")
         if userId is None:
             raise credentialsException
