@@ -3,6 +3,7 @@ const BASE_URL = "http://127.0.0.1:8000";
 async function request(path, options = {}) {
   const response = await fetch(`${BASE_URL}${path}`, {
     ...options,
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
       ...options.headers,
@@ -33,11 +34,12 @@ export async function registerUser(formData) {
 
 export async function loginUser(email, password) {
   const body = new URLSearchParams();
-  body.append("username", email)
-  body.append("password", password)
+  body.append("username", email);
+  body.append("password", password);
 
   const response = await fetch(`${BASE_URL}/login`, {
     method: "POST",
+    credentials: "include",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body,
   });
@@ -55,5 +57,17 @@ export async function getProfile(token) {
   return request("/profile", {
     method: "GET",
     headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export async function refereshSession() {
+  return request("/refresh", {
+   method: "POST",
+  });
+};
+
+export async function logoutUser() {
+  return request("/logout", {
+    method: "POST",
   });
 }
