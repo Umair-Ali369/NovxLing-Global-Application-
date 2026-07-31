@@ -1,44 +1,43 @@
-import { createContext, useContext, useEffect, useState } from "react";
-import { logoutUser, refereshSession } from "./api";
+import { createContext, useContext, useState } from "react";
+import { logoutUser } from "./api";
 
 const AuthContext = createContext(null);
 
+
+function loadStoredUser() {
+  try {
+    const raw = localStorage.getItem("novxling_user");
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
 export const AuthProvider = ({ children }) => {
-  const [token, setToken] = useState(null);
-  const [user, setUser] = useState(null);
-  const [checkingSession, setCheckingSession] = useState(true);
+  const [token, setToken] = useState(() => localStorage.getItem("novxling_token"));
+  const [user, setUser] = useState(loadStoredUser);
 
   const login = (newToken, newUser) => {
+    localStorage.setItem("novxling_token", newToken);
+    localStorage.setItem("novxling_user", JSON.stringify(newUser));
     setToken(newToken);
     setUser(newUser);
   };
 
-  const logout = async (newToken, newUser) => {
+  const logout = async () => {
     try {
-      await logoutUser();
+      await logoutUser(); // tells the backend to clear the refresh cookie, if it still exists
     } catch (err) {
       console.error("Logout request failed:", err.message);
     }
+    localStorage.removeItem("novxling_token");
+    localStorage.removeItem("novxling_user");
     setToken(null);
     setUser(null);
   };
 
-  useEffect(() => {
-    const trySilentLogin = async () => {
-      try {
-        const data = await refereshSession();
-        setToken(data.access_token);
-        setUser(data.user);
-      } catch {
-      } finally {
-        setCheckingSession(false);
-      }
-    };
-
-    trySilentLogin();
-  }, []);
   return (
-    <AuthContext.Provider value={{ token, user, login, logout, checkingSession }}>
+    <AuthContext.Provider value={{ token, user, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

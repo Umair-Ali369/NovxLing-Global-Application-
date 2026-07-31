@@ -1,6 +1,7 @@
 import { useState } from "react";
 import AuthLayout from "../components/AuthLayout";
 import { useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
 import Input from "../components/Input";
 import { registerUser } from "../api";
 
@@ -21,7 +22,6 @@ export default function Register() {
     age: "",
   });
   const [errors, setErrors] = useState({});
-  const [serverError, setServerError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -47,9 +47,10 @@ export default function Register() {
     setLoading(true);
     try {
       await registerUser(form);
+      toast.success("Account created! Please log in.");
       navigate("/login");
     } catch (error) {
-      setServerError(error.message);
+      toast.error(error.message);
     } finally {
       setLoading(false);
     }

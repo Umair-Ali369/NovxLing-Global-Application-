@@ -4,13 +4,12 @@ import { getProfile } from "../api";
 import { useAuth } from "../AuthContext";
 
 const Profile = () => {
-  const { token, logout, checkingSession } = useAuth();
+  const { token, logout } = useAuth();
   const navigate = useNavigate();
   const [profile, setProfile] = useState(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (checkingSession) return;
 
     if (!token) {
       navigate("/login");
@@ -18,21 +17,19 @@ const Profile = () => {
     }
     getProfile(token)
       .then(setProfile)
-      .catch((err) => setError(err.message));
-  }, [token, navigate, checkingSession]);
+      .catch((err) => {
+        setError(err.message);
+        // token exists but is invalid/expired - clear it instead of
+        // leaving a dead session sitting around, then send to login
+        logout();
+        navigate("/login");
+      });
+  }, [token, navigate]);
 
   const handleLogout = () => {
     logout();
     navigate("/login");
   };
-
-  if (checkingSession) {
-    return (
-      <div className="min-h-screen bg-[#091413] flex items-center justify-center">
-        <p className="text-[#E8EDEC]/50">Checking session...</p>
-      </div>
-    );
-  }
 
   if (error) {
     return (

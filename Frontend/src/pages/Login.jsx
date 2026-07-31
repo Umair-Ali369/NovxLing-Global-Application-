@@ -1,6 +1,7 @@
 import { useState } from "react";
 import AuthLayout from "../components/AuthLayout";
 import Input from "../components/Input";
+import toast from "react-hot-toast";
 import { loginUser } from "../api";
 import { useAuth } from "../AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -9,7 +10,7 @@ const Login = () => {
   const [form, setForm] = useState({ email: "", password: "" });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
-  const [serverError, setServerError] = useState("");
+
   const navigate = useNavigate();
   const { login } = useAuth();
 
@@ -18,23 +19,23 @@ const Login = () => {
   }
   function validate() {
     const newErrors = {};
-    if (!form.email.includes("@")) newErrors.email = "Enter a valid email";
-    if (!form.password) newErrors.password = "Password is required!";
+    if (!form.email.includes("@")) newErrors.email = "Enter a valid email"  && toast.error("Enter a valid email");
+    if (!form.password) newErrors.password = "Password is required!"  && toast.error("Password is required");
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setServerError("");
     if (!validate()) return;
     setLoading(true);
     try {
       const data = await loginUser(form.email, form.password);
       login(data.access_token, data.user);
+      toast.success(`Welcome back, ${data.user.name}!`);
       navigate("/profile");
     } catch (error) {
-      setServerError(error.message);
+      toast.error(error.message || "Please checkout the info and try again");
     } finally {
       setLoading(false);
     }

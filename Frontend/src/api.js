@@ -1,9 +1,11 @@
-const BASE_URL = "http://127.0.0.1:8000";
+const BASE_URL = window.location.hostname === "localhost" 
+  ? "http://localhost:8000" 
+  : "http://127.0.0.1:8000";
 
 async function request(path, options = {}) {
   const response = await fetch(`${BASE_URL}${path}`, {
     ...options,
-    credentials: "include",
+    credentials: "include", 
     headers: {
       "Content-Type": "application/json",
       ...options.headers,
@@ -34,12 +36,12 @@ export async function registerUser(formData) {
 
 export async function loginUser(email, password) {
   const body = new URLSearchParams();
-  body.append("username", email);
-  body.append("password", password);
+  body.append("username", email)
+  body.append("password", password)
 
   const response = await fetch(`${BASE_URL}/login`, {
     method: "POST",
-    credentials: "include",
+    credentials: "include", 
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body,
   });
@@ -60,12 +62,7 @@ export async function getProfile(token) {
   });
 }
 
-export async function refereshSession() {
-  return request("/refresh", {
-   method: "POST",
-  });
-};
-
+// NEW - clears the refresh cookie server-side.
 export async function logoutUser() {
   return request("/logout", {
     method: "POST",
