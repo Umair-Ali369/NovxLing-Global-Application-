@@ -1,5 +1,6 @@
 from pydantic import BaseModel, EmailStr
 
+## REGISTER USER
 class RegisterUser(BaseModel):
     name : str
     email : EmailStr
@@ -7,6 +8,7 @@ class RegisterUser(BaseModel):
     language : str = "en"
     age : int | None = None
 
+## PROFILE
 class UserReponse(BaseModel):
     id : int
     name : str
@@ -16,3 +18,12 @@ class UserReponse(BaseModel):
     
     class Confiq:
         from_attributes = True
+
+## CONVERSATIONS
+class ConversationCreate(BaseModel) :
+    participant_id : int
+
+## MESSAGES
+class MessageCreate(BaseModel):
+    conversation_id : int
+    content : str

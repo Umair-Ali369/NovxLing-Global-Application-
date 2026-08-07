@@ -5,11 +5,12 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 
 from app.database import getDB, engine, Base
-from app.models import UserDB
-from app.schemas import RegisterUser, UserReponse
+from app.models import UserDB, ConversationDB, MessageDB
+from app.schemas import ConversationCreate, MessageCreate, RegisterUser, UserReponse
 from app.auth import (
     hashPassword, verifyPassword, createAccessToken,getCurrentUser
 )
+from app.Services.translator import TranslateText
 
 # Creates tables if they don't exist yet - safe to run every startup
 Base.metadata.create_all(bind=engine)
@@ -132,3 +133,147 @@ def logout(response: Response):
 @app.get("/profile", response_model=UserReponse)
 def profile(currentUser: UserDB = Depends(getCurrentUser)):
     return currentUser
+
+# CREATE CONVERSATION
+@app.post("/conversations")
+def createConversations(
+    data : ConversationCreate,
+    db : Session = Depends(getDB),
+    currentUser : UserDB = Depends(getCurrentUser)
+):
+    otherUser = db.query(UserDB).filter(UserDB.id == data.participant_id).first()
+    if not otherUser:
+        raise HTTPException(status_code = 404, detail = "User not found.")
+
+    if otherUser.id == currentUser.id:
+        raise HTTPException(status_code = 400, detail = "Cannot start conversation with yourself.")
+
+    # CHECK IF A CONVERSATION B/W THEM ALREADY EXIST OR NOT
+    exist = db.query(ConversationDB).filter(
+        ((ConversationDB.participant_one_id == currentUser.id) & (ConversationDB.participant_two_id == otherUser.id) ) |
+        ((ConversationDB.participant_one_id == otherUser.id) & (ConversationDB.participant_two_id == currentUser.id))
+    ).first()
+
+    if exist:
+        return {
+            "id" : exist.id,
+            "participant_one_id" : exist.participant_one_id,
+            "participant_two_id" : exist.participant_two_id,
+            "created_at" : exist.created_at
+        }
+
+    newConversation = ConversationDB(
+        participant_one_id = currentUser.id,
+        participant_two_id = otherUser.id
+    )
+
+    db.add(newConversation)
+    db.commit()
+    db.refresh(newConversation)
+
+    return {
+        "id" : newConversation.id,
+        "participant_one_id" : newConversation.participant_one_id,
+        "participant_two_id" : newConversation.participant_two_id,
+        "created_at" : newConversation.created_at
+    }
+
+# GET YOUR CONVERSATIONS LIST
+@app.get("/conversations")
+def getConversations(
+    db : Session = Depends(getDB),
+    currentUser : UserDB = Depends(getCurrentUser)
+):
+    conversations = db.query(ConversationDB).filter(
+        (ConversationDB.participant_one_id == currentUser.id) |
+        (ConversationDB.participant_two_id == currentUser.id)
+    ).all()
+    
+    result = []
+    for conv in conversations:
+        otherUserId = conv.participant_two_id if conv.participant_one_id == currentUser.id else conv.participant_one_id
+        otherUser = db.query(UserDB).filter(UserDB.id == otherUserId).first()
+
+        result.append({
+            "id" : conv.id,
+            "with_User" : { "id" : otherUser.id, "name" : otherUser.name} if otherUser else None,
+            "created_at" : conv.created_at
+        })
+
+        return { "Conversations" : result}
+
+
+# SEND MESSAGE
+@app.post("/messages")
+def sendMessage(
+    data : MessageCreate,
+    db : Session = Depends(getDB),
+    currentUser : UserDB = Depends(getCurrentUser)
+):
+    conversation = db.query(ConversationDB).filter(ConversationDB.id == data.conversation_id).first()
+    if not conversation:
+        raise HTTPException(status_code = 404, detail = "Conversation Not found")
+
+    if currentUser.id not in (conversation.participant_one_id, conversation.participant_two_id):
+        raise HTTPException(status_code = 403, detail = "You are not part of this Conversation.")
+
+    recipientID = conversation.participant_two_id if conversation.participant_one_id == currentUser.id else conversation.participant_two_id
+    recipient = db.query(UserDB).filter(UserDB.id == recipientID).first()
+
+    translatedText = TranslateText(data.content, targetLang = recipient.language, sourceLang = "auto")
+
+    newMessage = MessageDB(
+        conversation_id = conversation.id,
+        sender_id = currentUser.id,
+        content = data.content,
+        translated = translatedText,
+        source_lang = currentUser.language,
+        target_lang = recipient.language,   
+    )
+    db.add(newMessage)
+    db.commit()
+    db.refresh(newMessage)
+
+    return {
+        "id" : newMessage.id,
+        "sender_id" : newMessage.sender_id,
+        "content" : newMessage.content,
+        "translated" : newMessage.translated,
+        "created_at" : newMessage.created_at
+    }
+    
+
+# GET MESSAGE HISTORY
+@app.get("/conversation/{conversation_id}/messages")
+def getMessages(
+    conversation_id : int,
+    db : Session = Depends(getDB),
+    currentUser : UserDB = Depends(getCurrentUser)
+): 
+    conversation = db.query(ConversationDB).filter(ConversationDB.id == conversation_id).first()
+    if not conversation:
+        raise HTTPException(status_code = 404 , detail = "Conversation not found")
+
+    if currentUser.id not in (conversation.participant_one_id, conversation.participant_two_id):
+        raise HTTPException(status_code = 403, detail = "You are not part of this Conversation.")
+
+    messages = db.query(MessageDB).filter(
+        MessageDB.conversation_id == conversation_id
+    ).order_by(MessageDB.created_at.asc()).all()
+
+    return {
+        "messages" : [
+            {
+                "id" : m.id,
+                "sender_id" : m.sender_id,
+                "content" : m.content,
+                "translated" : m.translated,
+                "created_at" : m.created_at
+            }
+            for m in messages
+        ]
+    }
+
+    
+
+        
