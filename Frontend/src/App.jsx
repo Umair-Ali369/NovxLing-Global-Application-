@@ -4,12 +4,13 @@ import { AuthProvider } from "./AuthContext";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Profile from "./pages/Profile"
+import Chat from "./pages/Chat";
 
 function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
-      \<Toaster
+      <Toaster
           position="top-center"
           toastOptions={{
             style: {
@@ -25,6 +26,7 @@ function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/login" element={<Login />} />
           <Route path="/profile" element={<Profile />}/>
+          <Route path="/chat" element={<Chat/>}/>
           <Route path="*" element={<Navigate to="/register" replace />} />
         </Routes>
       </BrowserRouter>
