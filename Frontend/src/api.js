@@ -19,6 +19,7 @@ async function request(path, options = {}) {
     throw new Error(data.detail || "Something went wrong");
   }
 
+  console.log(data)
   return data;
 }
 

@@ -1,7 +1,12 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 const ChatWindow = ({ messages = [], currentUid }) => {
   const [showOriginalText, setShowOriginalText] = useState(new Set());
+  const bottomRef = useRef()
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavious : "smooth"})
+  },[messages])
 
   const toggle = (id) => {
     setShowOriginalText((prev) => {
@@ -23,7 +28,7 @@ const ChatWindow = ({ messages = [], currentUid }) => {
     );
   }
   return (
-    <div>
+    <div className="flex flex-col gap-2 py-1 overflow-y-auto h-full">
       {messages.map((msg) => {
         const isMe = msg.sender_id == currentUid;
         const isShowText = showOriginalText.has(msg.id);
@@ -32,14 +37,14 @@ const ChatWindow = ({ messages = [], currentUid }) => {
         return (
           <div
             key={msg.id}
-            className={`flex flex-col max-w-[70%] ${isMe ? "self-end items-end" : "self-start items-start"}`}
+            className={`flex flex-col py-2 px-5 ${isMe ? "self-end items-end" : "self-start items-start"}`}
           >
             <div
-              className={`rounded-2xl px-4 py-2.5 text-sm
+              className={`rounded-2xl px-4 py-2.5 text-sm 
                 ${
                   isMe
-                    ? "bg-[#44ACFF] text-[#091413]"
-                    : "bg-[#0F1F1D] text-[#E8EDEC] border border-white/10"
+                    ? "bg-[#44ACFF] text-[#091413] font-semibold"
+                    : "bg-[#0F1F1D] text-[#E8EDEC] font-semibold border border-white/10"
                 }`}
             >
               {showText}
@@ -53,6 +58,7 @@ const ChatWindow = ({ messages = [], currentUid }) => {
           </div>
         );
       })}
+      <div ref={bottomRef} />
     </div>
   );
 };

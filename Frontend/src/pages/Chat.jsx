@@ -30,13 +30,12 @@ const Chat = () => {
 
   useEffect(() => {
     if (!token || !activeId) return;
-
     getMessages(token, activeId)
       .then((data) => setMessages(data.messages))
-      .catch((err) => toast.error(err.message));
+      .catch((err) => toast.error(err.message))
+      .finally(() => setLoading(false));
   }, [token, activeId]);
 
-  
   const handleContent = async (content) => {
     setLoading(true);
     try {
@@ -74,7 +73,13 @@ const Chat = () => {
       <div className="flex-1 flex items-center justify-center">
         {activeId ? (
           <div className="flex-1 flex flex-col">
-            <ChatWindow messages={messages} currentUid={user?.id} />
+            {loading ? (
+              <div className="flex-1 flex items-center justify-center">
+                <p className="text-[#E8EDEC]/30 text-sm">Loading messages...</p>
+              </div>
+            ) : (
+              <ChatWindow messages={messages} currentUid={user?.id} />
+            )}
             <MessageInput onSend={handleContent} sending={loading} />
           </div>
         ) : (
