@@ -30,12 +30,13 @@ const Chat = () => {
 
   useEffect(() => {
     if (!token || !activeId) return;
+
     getMessages(token, activeId)
       .then((data) => setMessages(data.messages))
-      .catch((err) => toast.error(err.message))
-      .finally(() => setLoading(false));
+      .catch((err) => toast.error(err.message));
   }, [token, activeId]);
 
+  
   const handleContent = async (content) => {
     setLoading(true);
     try {
@@ -50,9 +51,12 @@ const Chat = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#091413] flex">
+    <div className="h-screen bg-[#091413] flex overflow-hidden">
       {/* Sidebar */}
-      <div className="w-72 border-r border-white/10 flex flex-col">
+      <div
+        className={`w-full sm:w-72 border-r border-white/10 flex-col shrink-0 min-h-0
+          ${activeId ? "hidden sm:flex" : "flex"}`}
+      >
         <div className="p-4 border-b border-white/10">
           <div className="text-[#E8EDEC] font-semibold">
             Novx<span className="text-[#44ACFF]">Ling</span>
@@ -70,9 +74,21 @@ const Chat = () => {
       </div>
 
       {/* Main Area */}
-      <div className="flex-1 flex items-center justify-center">
+      <div className={`flex-1 flex-col min-h-0 ${activeId ? "flex" : "hidden sm:flex"}`}>
         {activeId ? (
-          <div className="flex-1 flex flex-col">
+          <div className="flex-1 flex flex-col min-h-0">
+            <div className="sm:hidden flex items-center gap-2 p-3 border-b border-white/10 shrink-0">
+              <button
+                onClick={() => setActiveId(null)}
+                className="text-[#44ACFF] text-sm px-2 py-1"
+              >
+                ← Back
+              </button>
+              <span className="text-[#E8EDEC] text-sm font-medium">
+                {conversations?.with_User?.name}
+              </span>
+            </div>
+
             {loading ? (
               <div className="flex-1 flex items-center justify-center">
                 <p className="text-[#E8EDEC]/30 text-sm">Loading messages...</p>
@@ -83,7 +99,7 @@ const Chat = () => {
             <MessageInput onSend={handleContent} sending={loading} />
           </div>
         ) : (
-          <div className="flex-1 flex items-center justify-center">
+          <div className="flex-1 items-center justify-center hidden sm:flex">
             <p className="text-[#E8EDEC]/30">
               Select a conversation to start chatting.
             </p>

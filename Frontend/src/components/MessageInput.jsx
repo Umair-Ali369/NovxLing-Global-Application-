@@ -13,8 +13,7 @@ const MessageInput = ({ onSend, sending }) => {
   return (
     <form
       onSubmit={handleSubmit}
-      className="p-4 border-t border-white/10 flex gap-2"
-    >
+      className="p-4 border-t border-white/10 flex gap-2 shrink-0">
       <input
         value={text}
         type="text"
@@ -26,8 +25,8 @@ const MessageInput = ({ onSend, sending }) => {
       <button
         type="submit"
         disabled={sending || !text.trim()}
-        className="bg-[#44ACFF] text-[#091413] font-medium rounded-lg px-5 py-2.5
-          hover:bg-[#44ACFF]/90 transition-colors disabled:opacity-40"
+        className="bg-[#013d6e] text-[#ffffff] font-medium rounded-lg px-5 py-2.5
+          hover:bg-[#44ACFF]/90 transition-colors disabled:opacity-90"
       >
         {sending ? "Sending..." : "Send"}
       </button>
