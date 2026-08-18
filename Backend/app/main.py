@@ -200,7 +200,7 @@ def getConversations(
             "created_at" : conv.created_at
         })
 
-        return { "Conversations" : result}
+    return { "Conversations" : result}    
 
 
 # SEND MESSAGE
@@ -217,7 +217,7 @@ def sendMessage(
     if currentUser.id not in (conversation.participant_one_id, conversation.participant_two_id):
         raise HTTPException(status_code = 403, detail = "You are not part of this Conversation.")
 
-    recipientID = conversation.participant_two_id if conversation.participant_one_id == currentUser.id else conversation.participant_two_id
+    recipientID = conversation.participant_two_id if conversation.participant_one_id == currentUser.id else conversation.participant_one_id    
     recipient = db.query(UserDB).filter(UserDB.id == recipientID).first()
 
     translatedText = TranslateText(data.content, targetLang = recipient.language, sourceLang = "auto")
@@ -274,6 +274,23 @@ def getMessages(
         ]
     }
 
-    
+## SEARCH USERES
+@app.get("/users/search")
+def searchUser(
+   query : str = "",
+   db : Session = Depends(getDB),
+   currentUser : UserDB = Depends(getCurrentUser)
+):
+   results = db.query(UserDB).filter(
+       UserDB.name.ilike(f"%{query}%"),
+       UserDB.id != currentUser.id
+    ).limit(20).all()
+
+   return {
+       "Users" : [
+           {"id" : u.id, "name" : u.name, "language" : u.language}
+           for u in results 
+       ]
+    }
 
         
