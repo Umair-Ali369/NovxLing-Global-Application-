@@ -12,7 +12,7 @@ const ConversationLIst = ({ conversations, activeId, onSelect }) => {
         <button
         key={conv.id}
         onClick={() => onSelect(conv.id)}
-        className={`text-left px-4 py-3 border-b border-white/5 transition-colors
+        className={`text-left px-4 py-3 w-full border-b border-white/5 transition-colors
           ${activeId === conv.id ? "bg-[#132824]" : "hover:bg-[#0F1F1D]"}`}
       >
           <p className="text-[#E8EDEC] font-medium text-sm">

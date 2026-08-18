@@ -101,6 +101,14 @@ export async function getMessages(token, conversation_id) {
   });
 }
 
+// SEARCH USERS
+export async function searchUsers(token, query) {
+  return request(`/users/search?query=${encodeURIComponent(query)}`, {
+    method: "GET",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
 // LOGOUT USER
 export async function logoutUser() {
   return request("/logout", {

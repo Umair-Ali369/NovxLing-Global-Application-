@@ -8,6 +8,8 @@ import { useState } from "react";
 import { useEffect } from "react";
 import ChatWindow from "../components/ChatWindow";
 import MessageInput from "../components/MessageInput";
+import NewChat from "../components/NewChat";
+import { jsx } from "react/jsx-runtime";
 
 const Chat = () => {
   const { token, user } = useAuth();
@@ -16,6 +18,7 @@ const Chat = () => {
   const [activeId, setActiveId] = useState(Number);
   const [loading, setLoading] = useState(true);
   const [messages, setMessages] = useState([]);
+  const [newChat, setNewChat] = useState(false);
 
   useEffect(() => {
     if (!token) {
@@ -36,7 +39,6 @@ const Chat = () => {
       .catch((err) => toast.error(err.message));
   }, [token, activeId]);
 
-  
   const handleContent = async (content) => {
     setLoading(true);
     try {
@@ -57,10 +59,16 @@ const Chat = () => {
         className={`w-full sm:w-72 border-r border-white/10 flex-col shrink-0 min-h-0
           ${activeId ? "hidden sm:flex" : "flex"}`}
       >
-        <div className="p-4 border-b border-white/10">
+        <div className="p-4 border-b border-white/10 flex justify-between items-center">
           <div className="text-[#E8EDEC] font-semibold">
             Novx<span className="text-[#44ACFF]">Ling</span>
           </div>
+          <button
+            onClick={() => setNewChat(true)}
+            className="text-[#44ACFF] text-xl leading-none p-2 hover:bg-white/5 rounded"
+          >
+            +
+          </button>
         </div>
         {loading ? (
           <p className="p-4 text-sm text-[#E8EDEC]/40">Loading... </p>
@@ -74,7 +82,9 @@ const Chat = () => {
       </div>
 
       {/* Main Area */}
-      <div className={`flex-1 flex-col min-h-0 ${activeId ? "flex" : "hidden sm:flex"}`}>
+      <div
+        className={`flex-1 flex-col min-h-0 ${activeId ? "flex" : "hidden sm:flex"}`}
+      >
         {activeId ? (
           <div className="flex-1 flex flex-col min-h-0">
             <div className="sm:hidden flex items-center gap-2 p-3 border-b border-white/10 shrink-0">
@@ -106,6 +116,19 @@ const Chat = () => {
           </div>
         )}
       </div>
+
+      {newChat && (
+        <NewChat
+          token={token}
+          onClose={() => setNewChat(false)}
+          onCreated={(newId) => {
+            setActiveId(newId);
+            getConversations(token).then((data) =>
+              setConversations(data.Conversations),
+            );
+          }}
+        />
+      )}
     </div>
   );
 };
