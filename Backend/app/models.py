@@ -1,4 +1,5 @@
 from enum import unique
+from fastapi import FastAPI
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey
 from datetime import datetime
 from app.database import Base
@@ -37,4 +38,26 @@ class MessageDB(Base):
     translated = Column(String, nullable = False )
     source_lang = Column(String, nullable = False )
     target_lang = Column(String, nullable = False )
+    created_at = Column(DateTime, default = datetime.utcnow)
+
+
+# LEARNING SESSION MODEL
+class LearningSessionDB(Base):
+    __tablename__ = "Learning_Sessions"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("Users.id"), nullable = False)
+    title = Column(String, nullable = False, default = "New Session")
+    created_at = Column(DateTime, default = datetime.utcnow)
+
+
+# LEARNING MESSAGES MODEL
+class LearningMessagesDB(Base):
+    __tablename__ = "Learning_Messages"
+
+    id = Column(Integer, primary_key = True, autoincrement = True)
+    session_id = Column(Integer, ForeignKey("Learning_Sessions.id"), nullable = False)
+    role = Column(String, nullable = False)
+    content = Column(String, nullable = False)
+    translated = Column(String, nullable = False)
     created_at = Column(DateTime, default = datetime.utcnow)
