@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr
 
 ## REGISTER USER
 class RegisterUser(BaseModel):
@@ -10,14 +10,13 @@ class RegisterUser(BaseModel):
 
 ## PROFILE
 class UserReponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id : int
     name : str
     email : str
     language : str
     is_premium : bool
-    
-    class Confiq:
-        from_attributes = True
 
 ## CONVERSATIONS
 class ConversationCreate(BaseModel) :
@@ -27,3 +26,12 @@ class ConversationCreate(BaseModel) :
 class MessageCreate(BaseModel):
     conversation_id : int
     content : str
+
+## LEARNING SESSION
+class LearningSessionCreate(BaseModel):
+    title : str = "New Session"
+
+## TUTOR
+class AskTutorRequest(BaseModel):
+    question : str
+    depth : str = "simple"

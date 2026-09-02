@@ -5,12 +5,13 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 
 from app.database import getDB, engine, Base
-from app.models import UserDB, ConversationDB, MessageDB
-from app.schemas import ConversationCreate, MessageCreate, RegisterUser, UserReponse
+from app.models import LearningMessagesDB, LearningSessionDB, UserDB, ConversationDB, MessageDB
+from app.schemas import AskTutorRequest, ConversationCreate, LearningSessionCreate, MessageCreate, RegisterUser, UserReponse
 from app.auth import (
     hashPassword, verifyPassword, createAccessToken,getCurrentUser
 )
 from app.Services.translator import TranslateText
+from app.Services.ai import AskTutor
 
 # Creates tables if they don't exist yet - safe to run every startup
 Base.metadata.create_all(bind=engine)
@@ -293,4 +294,118 @@ def searchUser(
        ]
     }
 
-        
+## CREATE LEARNING SESSION
+@app.post("/learn/session")
+def createSession(
+    data : LearningSessionCreate,
+    db : Session = Depends(getDB),
+    currentUser : UserDB = Depends(getCurrentUser)
+):
+    newSession = LearningSessionDB(
+        user_id = currentUser.id,
+        title = data.title
+    )
+    db.add(newSession)
+    db.commit()
+    db.refresh(newSession)
+
+    return{ 
+        "id" : newSession.id,
+        "title" : newSession.title,
+        "created_at" : newSession.created_at
+    }
+
+# LIST OF LEARNING SESSION
+@app.get("/learn/sessions")
+def getLearningSessions(
+    db : Session = Depends(getDB),
+    currentUser : UserDB = Depends(getCurrentUser)
+):
+    Sessions = db.query(LearningSessionDB).filter(
+        LearningSessionDB.user_id == currentUser.id
+    ).order_by(LearningSessionDB.created_at.desc(1)).all()
+
+    return {
+        "sessions" : [
+            {"id" : s.id, "title" : s.title, "created_at" : s.created_at}
+            for s in Sessions
+        ]
+    }
+
+# ASK QUESTION FROM TUTOR
+@app.post("/learn/sessions/{session_id}/ask")
+def askTutor(
+    session_id : int,
+    data : AskTutorRequest,
+    db : Session = Depends(getDB),
+    currentUser : UserDB = Depends(getCurrentUser)
+):
+    session = db.query(LearningSessionDB).filter(LearningSessionDB.id == session_id).first()
+    if not session:
+        raise HTTPException(status_code = 404, detail = "Session not found.")
+
+    if session.user_id != currentUser.id:
+        raise HTTPException(status_code = 403 , detail = "This is not your Session.")
+
+    userMessage = LearningMessagesDB(
+        session_id = session_id,
+        role = "user",
+        content = data.question,
+        translated = data.question
+    )
+
+    db.add(userMessage)
+    db.commit()
+
+    result = AskTutor(data.question, depth = data.depth, userLanguage = currentUser.language)
+
+    if not result["success"]:
+        raise HTTPException(status_code = 500, detail = result["error"])
+
+    assistantMessage = LearningMessagesDB(
+        session_id = session_id,
+        role = "assistant",
+        content = result["answer"],
+        translated = result["translated_answer"]
+    )
+
+    db.add(assistantMessage)
+    db.commit()
+    db.refresh(assistantMessage)
+
+    return { 
+        "answer" : assistantMessage.content,
+        "translated" : assistantMessage.translated,
+        "created_at" : assistantMessage.created_at
+    }
+
+# GET SESSION HISTORY
+@app.get("/learn/sessions/{session_id}/messages")
+def getSessionHistory(
+    session_id : int,
+    db : Session = Depends(getDB),
+    currentUser : UserDB = Depends(getCurrentUser) 
+): 
+    session = db.query(LearningSessionDB).filter(LearningSessionDB.id == session_id).first()
+    if not session:
+        raise HTTPException(status_code = 404, detail = "Session not found.")
+
+    if session.user_id != currentUser.id:
+        raise HTTPException(status_code = 403 , detail = "This is not your Session.")
+
+    messages = db.query(LearningMessagesDB).filter(
+        LearningMessagesDB.session_id == session_id
+    ).order_by(LearningMessagesDB.created_at.asc()).all()
+
+    return {
+        "messages" : [
+            { "id": m.id,
+                "role": m.role,
+                "content": m.content,
+                "translated": m.translated,
+                "created_at": m.created_at
+            }
+            for m in messages
+        ]
+    }
+    
