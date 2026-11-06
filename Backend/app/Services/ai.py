@@ -1,60 +1,65 @@
-import os 
+import os
 from groq import Groq
 from dotenv import load_dotenv
 from app.Services.translator import TranslateText
 
 load_dotenv()
 
-client = Groq(api_key = os.getenv("GROQ_API_KEY"))
+client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
-SIMPLE_TUTOR_PROMPT = """ 
-You are a patient , friendly tutor explaining thing to a complex beginner.
-Use simple everyday words, real world analogies, and short sentences.
-Avoid jorgon. If you must use a technical term, explain it immediately in plain language. 
-Keep answer focused and not too long.
+# Bigger model for the tutor, separate from the translator's model.
+TUTOR_MODEL = "openai/gpt-oss-120b"
+
+SIMPLE_TUTOR_PROMPT = """
+You are a patient, friendly tutor explaining things to a complete beginner.
+Use simple everyday words, real-world analogies, and short sentences.
+Avoid jargon. If you must use a technical term, explain it immediately in plain language.
+Keep answers focused and not too long.
 """
 
 DEEP_TUTOR_PROMPT = """
-You are a knowledgeable tutor giving a through, technically precise explanation
-to a student with some background knowledge. Use accurate terminologies, explalin 
-naunce and edge case, and don't over simplify. Still be clear and well organized , not 
-just dense.
+You are a knowledgeable tutor giving a thorough, technically precise explanation
+to a student with some background knowledge. Use accurate terminology, explain
+nuance and edge cases, and don't oversimplify. Avoid beginner analogies.
+Still be clear and well organized, not just dense.
 """
 
-def AskTutor(question : str, depth : str , userLanguage : str) -> dict:
-    """
-    Sends a question to the AI tutor and returns both the English
-    response and its translation into the user's language. If either
-    the AI call or the translation fails, this degrades gracefully
-    instead of crashing - a failed AI call should never mean the user
-    gets nothing back.
-    """
-    systemPrompt = DEEP_TUTOR_PROMPT if depth == "deep" else SIMPLE_TUTOR_PROMPT
+
+def AskTutor(question: str, depth: str, userLanguage: str) -> dict:
+    isDeep = depth == "deep"
+    systemPrompt = DEEP_TUTOR_PROMPT if isDeep else SIMPLE_TUTOR_PROMPT
 
     try:
         response = client.chat.completions.create(
-            model = "groq/compound-mini",
-            messages = [
-                {"role" : "system", "content" : systemPrompt},
-                {"role" : "user", "content" : question},
+            model=TUTOR_MODEL,
+            messages=[
+                {"role": "system", "content": systemPrompt},
+                {"role": "user", "content": question},
             ],
-            max_tokens = 600,
-            temperature = 0.7
+            max_tokens=3000,  # reasoning tokens count too
+            reasoning_effort="medium" if isDeep else "low",
+            temperature=0.7,
         )
-
-        englishAnswer = response.choices[0].message.content
+        englishAnswer = (response.choices[0].message.content or "").strip()
+        if not englishAnswer:
+            raise ValueError("Model returned an empty answer")
     except Exception as e:
+        print("TUTOR ERROR:", type(e).__name__, e)
         return {
-            "success" : False,
-            "error" : str(e),
-            "answer" : None,
-            "translated_answer" : None
+            "success": False,
+            "error": str(e),
+            "answer": None,
+            "translated_answer": None,
         }
-    
-    translatedAnswer = TranslateText(englishAnswer, targetLang = userLanguage) if userLanguage != "en" else englishAnswer
+
+    translatedAnswer = (
+        TranslateText(englishAnswer, targetLang=userLanguage)
+        if userLanguage != "en"
+        else englishAnswer
+    )
 
     return {
-        "success" : True,
-        "answer" : englishAnswer,
-        "translated_answer" : translatedAnswer
+        "success": True,
+        "answer": englishAnswer,
+        "translated_answer": translatedAnswer,
     }

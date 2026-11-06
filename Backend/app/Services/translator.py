@@ -1,38 +1,23 @@
 import os
 from groq import Groq
-from groq import RateLimitError, APIError
+from groq import RateLimitError
 from dotenv import load_dotenv
 
 load_dotenv()
 
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
-# Maps language codes to full names - the AI understands "Urdu" much
-# more reliably than the raw code "ur" in a prompt.
+# Change the model here only. Must be a chat model your key can use
+# (check with client.models.list()).
+MODEL = "openai/gpt-oss-20b"
+
 LANGUAGE_NAMES = {
-    "en": "English",
-    "ur": "Urdu",
-    "ja": "Japanese",
-    "ar": "Arabic",
-    "fr": "French",
-    "es": "Spanish",
-    "zh": "Chinese",
-    "hi": "Hindi",
-    "de": "German",
+    "en": "English", "ur": "Urdu", "ja": "Japanese", "ar": "Arabic",
+    "fr": "French", "es": "Spanish", "zh": "Chinese", "hi": "Hindi", "de": "German",
 }
 
 
 def TranslateText(text: str, targetLang: str, sourceLang: str = "auto") -> str:
-    """
-    Translates text using Groq/Llama instead of GoogleTranslator, since
-    the unofficial Google web-scraping approach started failing with
-    500 errors (Google-side, not something we can fix). This uses the
-    same Groq client already set up for the AI tutor - no new dependency.
-
-    Falls back to the ORIGINAL text if the AI call fails for any reason
-    (rate limit, network issue, etc) - a failed translation should never
-    mean a lost message, same principle as before.
-    """
     if not text or not text.strip():
         return text
 
@@ -40,7 +25,7 @@ def TranslateText(text: str, targetLang: str, sourceLang: str = "auto") -> str:
 
     try:
         response = client.chat.completions.create(
-            model="groq/compound-mini",
+            model=MODEL,
             messages=[
                 {
                     "role": "system",
@@ -52,19 +37,20 @@ def TranslateText(text: str, targetLang: str, sourceLang: str = "auto") -> str:
                 },
                 {"role": "user", "content": text},
             ],
-            max_tokens=500,
-            temperature=0.3,  # lower temperature - we want consistent, literal
-                              # translation, not creative variation
+            max_tokens=1500,          # reasoning tokens count too, so keep this generous
+            reasoning_effort="low",   # translation doesn't need deep thinking
+            temperature=0.3,
         )
-        translated = response.choices[0].message.content.strip()
-        return translated if translated else text
+        translated = (response.choices[0].message.content or "").strip()
+        if not translated:
+            print("GROQ TRANSLATE: empty response, falling back to original text")
+            return text
+        return translated
 
-    except RateLimitError:
-        # Groq's free tier has request limits - this is the specific
-        # case Umair wants a clear message for, not a silent fallback.
+    except RateLimitError as e:
+        print("GROQ RATE LIMIT:", e)
         return f"[Translation temporarily unavailable - rate limit reached, please try again shortly] {text}"
 
-    except (APIError, Exception):
-        # Any other failure (network, API down, etc) - degrade gracefully,
-        # same principle as the original GoogleTranslator version.
+    except Exception as e:
+        print("GROQ TRANSLATE ERROR:", type(e).__name__, e)
         return text
