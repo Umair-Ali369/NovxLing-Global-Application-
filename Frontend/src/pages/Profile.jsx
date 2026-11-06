@@ -20,13 +20,13 @@ const FEATURES = [
     path: "/chat",
   },
   // Once Month 3's Learn feature ships, add:
-  // {
-  //   key: "learn",
-  //   label: "Learn",
-  //   description: "Ask a patient tutor anything, in your language.",
-  //   icon: "📚",
-  //   path: "/learn",
-  // },
+  {
+    key: "learn",
+    label: "Learn",
+    description: "Ask a patient tutor anything, in your language.",
+    icon: "📚",
+    path: "/learn",
+  },
 ];
 
 const Profile = () => {

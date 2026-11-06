@@ -19,7 +19,6 @@ async function request(path, options = {}) {
     throw new Error(data.detail || "Something went wrong");
   }
 
-  console.log(data)
   return data;
 }
 
@@ -101,6 +100,13 @@ export async function getMessages(token, conversation_id) {
   });
 }
 
+// LOGOUT USER
+export async function logoutUser() {
+  return request("/logout", {
+    method: "POST",
+  });
+}
+
 // SEARCH USERS
 export async function searchUsers(token, query) {
   return request(`/users/search?query=${encodeURIComponent(query)}`, {
@@ -109,9 +115,36 @@ export async function searchUsers(token, query) {
   });
 }
 
-// LOGOUT USER
-export async function logoutUser() {
-  return request("/logout", {
+// GET SESSION
+export async function getSessions(token) {
+  return request("/learn/sessions", {
+    method: "GET",
+    headers: {Authorization : `Bearer ${token}`},
+  })
+}
+
+// CREATE SESSION
+export async function createSession(token, title) {
+     return request("/learn/sessions", {
+      method: "POST",
+      headers: {Authorization : `Bearer ${token}`}, 
+      body: JSON.stringify({title}),
+     })
+}
+
+// ASK TUTOR
+export async function askTutor(token, sessionId, question, depth) {
+  return request(`/learn/sessions/${sessionId}/ask`, {
     method: "POST",
+    headers: {Authorization: `Bearer ${token}` },
+    body : JSON.stringify({question, depth}),
   });
+}
+
+// GET SESSION MESSAGES
+export async function getSessionMessages(token, sessionId) {
+  return request(`/learn/sessions/${sessionId}/messages`, {
+    method : "GET",
+    headers : {Authorization : `Bearer ${token}`},
+  })
 }
