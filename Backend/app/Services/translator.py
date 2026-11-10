@@ -37,7 +37,7 @@ def TranslateText(text: str, targetLang: str, sourceLang: str = "auto") -> str:
                 },
                 {"role": "user", "content": text},
             ],
-            max_tokens=1500,          # reasoning tokens count too, so keep this generous
+            max_tokens=4000,          # reasoning tokens count too, so keep this generous
             reasoning_effort="low",   # translation doesn't need deep thinking
             temperature=0.3,
         )

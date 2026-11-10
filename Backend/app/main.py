@@ -295,7 +295,7 @@ def searchUser(
     }
 
 ## CREATE LEARNING SESSION
-@app.post("/learn/session")
+@app.post("/learn/sessions")
 def createSession(
     data : LearningSessionCreate,
     db : Session = Depends(getDB),
@@ -323,7 +323,7 @@ def getLearningSessions(
 ):
     Sessions = db.query(LearningSessionDB).filter(
         LearningSessionDB.user_id == currentUser.id
-    ).order_by(LearningSessionDB.created_at.desc(1)).all()
+    ).order_by(LearningSessionDB.created_at.desc()).all()
 
     return {
         "sessions" : [
@@ -347,6 +347,11 @@ def askTutor(
     if session.user_id != currentUser.id:
         raise HTTPException(status_code = 403 , detail = "This is not your Session.")
 
+    previous = db.query(LearningMessagesDB).filter(
+        LearningMessagesDB.session_id == session_id
+    ).order_by(LearningMessagesDB.created_at.desc()).limit(10).all()
+    history = [{"role": m.role, "content": m.content} for m in reversed(previous)]
+
     userMessage = LearningMessagesDB(
         session_id = session_id,
         role = "user",
@@ -357,7 +362,11 @@ def askTutor(
     db.add(userMessage)
     db.commit()
 
-    result = AskTutor(data.question, depth = data.depth, userLanguage = currentUser.language)
+    if session.title == "New session":
+        session.title = data.question.strip()[:40]
+        db.commit()
+
+    result = AskTutor(data.question, depth=data.depth, userLanguage=currentUser.language, history=history)
 
     if not result["success"]:
         raise HTTPException(status_code = 500, detail = result["error"])
